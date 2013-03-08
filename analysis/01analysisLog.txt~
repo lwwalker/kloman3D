@@ -1,0 +1,121 @@
+Step 1 - Process raw titer data to binary response vector.  In principle continuous response would be interesting, however the bulk of titers are either > 50 or <10 presenting a picture of data in a bimodal distribution.
+
+(1/23/13) - process raw data for "knowns" b12, 2F5, 447-52D
+`../code/makeResp.py ../rawData/b12.txt ../rawData/b12.fas b12.resp`
+found 127 titer values, of which 61 are sensitive
+
+`../code/makeResp.py ../rawData/2F5.txt ../rawData/2F5.fas 2F5.resp`
+found 126 titer values, of which 87 are sensitive
+
+`../code/makeResp.py ../rawData/447-52D.txt ../rawData/447-52D.fas 447.resp`
+Titer Value of >12.5 found for EBFBR93019, scoring as resistant
+Titer Value of >12.5 found for EDUG93070, scoring as resistant
+found 88 titer values, of which 14 are sensitive
+Note: a little unclear what to do with ">12.5", because it probably means they didn't check concentrations higher. Given strong bimodal signature of data, by "eyeball imputation", the conditional probablilty of being > 50 if you're greater than 12.5 is high.
+
+Note: spot-check of these values against 2010 work consistent.
+
+(1/29/13) - process raw data for 2G12, 4E10, PG16, PG9
+
+`../code/extractFromSqlite.py ../rawData/allneuts.sqlite3 ../supportFiles/HXB2_nogaps.fasta 2G12`
+No sequence for E01_0520
+No sequence for E04_120166
+No sequence for E04_120160
+No sequence for E01_0494
+No sequence for EARW92021
+No sequence for E04_120171
+No sequence for E01_0526
+No sequence for E04_119110
+No sequence for ENL4-3
+No sequence for E04_120365
+No sequence for EBUSJRCSFc
+No sequence for E01_0502
+No sequence for E04_117932
+No sequence for EBUSxxx44c
+No sequence for ENL43
+No sequence for EJRCSF
+No sequence for E01_0347
+No sequence for E04_120349
+No sequence for EMB.C.5
+No sequence for E01_0566
+No sequence for EJR-CSFc
+No sequence for E01_0563
+No sequence for EVLGC_AE1
+No sequence for EJR-FL
+No sequence for E04_119095
+No sequence for E01_0570
+No sequence for EBFRxNL43c
+No sequence for E04_120163
+No sequence for EaMLV
+No sequence for E01_0556
+No sequence for E01_0375
+No sequence for E01_0370
+No sequence for EAUG92037
+No sequence for E01_0385
+No sequence for Eamphotropic
+No sequence for E98BR004
+Found 242 sequence/titer pairs
+`../code/makeResp.py 2G12.csv 2G12.fasta 2G12.resp`
+found 242 titer values, of which 62 are sensitive
+Error, no titer in titer file for squence ID HXB2.
+
+`../code/extractFromSqlite.py ../rawData/allneuts.sqlite3 ../supportFiles/HXB2_nogaps.fasta 4E10`
+No sequence for E01_0520
+No sequence for E04_120166
+No sequence for E04_120160
+No sequence for E01_0494
+No sequence for EARW92021
+No sequence for E04_120171
+No sequence for E01_0526
+No sequence for E04_119110
+No sequence for ENL4-3
+No sequence for E04_120365
+No sequence for EBUSJRCSFc
+No sequence for E01_0502
+No sequence for E04_117932
+No sequence for EBUSxxx44c
+No sequence for ENL43
+No sequence for EJRCSF
+No sequence for E01_0347
+No sequence for E04_120349
+No sequence for EMB.C.5
+No sequence for E01_0566
+No sequence for EJR-CSFc
+No sequence for E01_0563
+No sequence for EVLGC_AE1
+No sequence for EJR-FL
+No sequence for E04_119095
+No sequence for E01_0570
+No sequence for EBFRxNL43c
+No sequence for E04_120163
+No sequence for EaMLV
+No sequence for E01_0556
+No sequence for E01_0375
+No sequence for E01_0370
+No sequence for EAUG92037
+No sequence for E01_0385
+No sequence for Eamphotropic
+No sequence for E98BR004
+Found 242 sequence/titer pairs
+`../code/makeResp.py 4E10.csv 4E10.fasta 4E10.resp`
+
+`../code/extractFromSqlite.py ../rawData/allneuts.sqlite3 ../supportFiles/HXB2_nogaps.fasta PG16`
+Found 142 sequence/titer pairs
+`../code/makeResp.py PG16.csv PG16.fasta PG16.resp`
+found 142 titer values, of which 136 are sensitive
+Error, no titer in titer file for squence ID HXB2.
+
+`../code/extractFromSqlite.py ../rawData/allneuts.sqlite3 ../supportFiles/HXB2_nogaps.fasta PG9`
+Found 142 sequence/titer pairs
+`../code/makeResp.py PG9.csv PG9.fasta PG9.resp`
+found 142 titer values, of which 137 are sensitive
+Error, no titer in titer file for squence ID HXB2.
+
+NOTE: AT THIS STAGE, WE HAVE UNALIGNED NUCLEOTIDE SEQUENCES.  THESE FASTA FILES RELABLED "abNameNT.fasta".  Use hyphy to do multiple sequence alignment and translate?
+
+
+2/18/12:
+
+Re-reun basic anayses to spot check regularization tuning, etc
+../code/kloman3Dv04.py -m ../rawData/b12.py -g ../supportFiles/1AIK.pdb -r 12 -s 4 -n 0.1 -v reRuns/b12reRun.kM ../supportFiles/HXB2_nogaps.fasta ../supportFiles/3DNN.pdb b12.resp reRuns/b12reRun.out
+
