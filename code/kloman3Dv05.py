@@ -225,6 +225,11 @@ def main(argv):
 		svmType = "nu"
 		myParam = 0.2
 
+	
+	#Load response data
+	print "Loading response file"
+	allResp = parseY(responsefilename)	#Load in titers
+	
 	#Load kernel matrixes if supplied
 	if not loadKMfilename is None:
 		print("Loading Kernel Matrixes")
@@ -237,7 +242,7 @@ def main(argv):
 		sampleSeqs=None
 	else:
 		print("Load Sequences . . . ")
-		referenceSeq, sampleSeqs = parseSeqData(pdbfilename, fastafilename, mapFileName, gp41filename)
+		referenceSeq, sampleSeqs = parseSeqData(pdbfilename, fastafilename, mapFileName, allResp.keys(), gp41filename)
 	
 		print("Calculate kernel matrixes, ")
 	 	sys.stdout.flush()
@@ -251,17 +256,14 @@ def main(argv):
 		t1 = time.time()
 		print "Kernel Matrixes calculated in {} seconds".format(round(t1-t0,2))	
 	
-	#Associate titer data with samples in kernel matrixes			
-	print "Loading response file"
-	allResp = parseY(responsefilename)	#Load in titers
-	
+	#Associate titer data with samples in kernel matrixes				
 	y = []
 	for name in kernMats[0].sampleNames:
 		try:
 			y.append(int(allResp[name]))
 		except KeyError:
 			print "Unable to find response value for sequence \"{}\"".format(name)
-			sys.exit(2)
+			sys.exit(2)		
 	
 	#Save kernel matrixes if so instructed
 	if not saveKMfilename is None:

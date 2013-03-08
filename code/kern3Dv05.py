@@ -446,7 +446,7 @@ def parseAAmap(aaFileName):
 		
 	return aaMap
 
-def parseSeqData(pdbFN, fastFN, mapFN, gp41fn = None):
+def parseSeqData(pdbFN, fastFN, mapFN, sampleNames, gp41fn = None):
 	"""parseSeqData(pdbFN, fastFN, mapFN, gp41fn = None)
 	Reads sequence data out of a fasta file, makes it into refSeq and seq objects
 	Assumes the first entry in the fasta file is the reference sequence, which
@@ -456,6 +456,7 @@ def parseSeqData(pdbFN, fastFN, mapFN, gp41fn = None):
 	pdbFN: gp120 pdb filename
 	fastFN: fasta file name
 	mapFN: pre-computed structural map file name (may be None if all sequences are in the fasta file)
+	sampleNames: a list of sample names found in the response file
 	
 	Optional parameters:
 	gp41fn: gp41 pdb file name
@@ -492,11 +493,12 @@ def parseSeqData(pdbFN, fastFN, mapFN, gp41fn = None):
 		execfile(mapFN,d,d)
 		sequenceMaps = d["sequenceMaps"]
 		for k in sequenceMaps.keys():
-			sampleSeqs.append(seq(k,sequenceMaps[k]))
+			if k in sampleNames:
+				sampleSeqs.append(seq(k,sequenceMaps[k]))
 	else: #Estimate directly from the remaining sequences in the fasta file
 		while (len(fastaLines) > 0):
 			myName, mySeq = getNextSeq(fastaLines)
-			if((not myName is None) and (mySeq != "")):
+			if((not myName is None) and (mySeq != "") and myName in sampleNames):
 				sampleSeqs.append(seq(referenceSeq, myName, mySeq))
 				
 	return (referenceSeq, sampleSeqs)
