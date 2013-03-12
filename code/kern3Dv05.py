@@ -49,19 +49,19 @@ def simpleBidirectionalSelection(start, maxIter = None):
 	A model object representing the product of the selection	
 	"""
 
-	try:
-		start.accuracy()
+	if isinstance(start, model):
 		curMod = start
-	except AttributeError:
-		if start == "none":
-			curMod = model(kernMats,[], myParam, svmType, y)
-		elif start == "all":
-			curMod = model(kernMats,range(len(kernMats)), myParam, svmType, y)
-		else:		
-			print "start value of {} passed to simpleBidirectionalSelection, should be \"none\", \"all\" or a model object".format(start)
-			raise ValueError
+	elif start == "none":
+		curMod = model(kernMats,[], myParam, svmType, y)
+	elif start == "all":
+		curMod = model(kernMats,range(len(kernMats)), myParam, svmType, y)
+	else:		
+		print "start value of {} passed to simpleBidirectionalSelection, should be \"none\", \"all\" or a model object".format(start)
+		raise ValueError
 
-	runSVM(curMod)
+	res = runSVM(curMod)
+	updateModelResults(curMod, res)
+	
 	continueFlag = True
 	i = 1
 
@@ -145,13 +145,13 @@ def candidateListEvaluate(candList, numReturn=1, multiproc = True):
 	if multiproc:
 		allResults = queueManager(NUMPROC, candList, runSVMqueue)
 		for i in range(len(allResults)):
-			candList[i].acc = allResults[i]
+			updateModelResults(candList[i], allResults[i])
 	else:
 		allResults = []
 		for m in candList:
-			myAcc = runSVM(m)
-			allResults.append(myAcc)
-			m.acc = myAcc
+			res = runSVM(m)
+			updateModelResults(m, res)
+			allResults.append(res[0])
 
 	return [x for (y,x) in sorted(zip(allResults,candList), reverse = True)][:numReturn]
 
@@ -186,12 +186,17 @@ def radiiTune(baseMod, rSeq, sSeqs, normlze = False, AAmap = None):
 		return baseMod	
 
 	workingModel = baseMod
-	workingModel.acc = runSVM(workingModel)
+	res = runSVM(workingModel)
+	updateModelResults(workingModel, res)
+
 	i = 1
 	for j in baseMod.mySlice:
 		print "Radius/sd tuning KM {} of {}".format(i, len(workingModel.mySlice))
 		lastModel = model(workingModel.km, [], workingModel.pr, workingModel.svmType, workingModel.y)
-		lastModel.acc = runSVM(lastModel)
+
+		res = runSVM(lastModel)
+		updateModelResults(lastModel, res)
+
 		while workingModel.acc > lastModel.acc:
 			lastModel = workingModel
 			oldRad = lastModel.km[j].rad
@@ -228,10 +233,12 @@ def regularizationTune(mod):
 	"""
 	rng = [0.1,0.33,0.67,1.0,3.3,6.7,10.0]
 
-	mod.acc = runSVM(mod)
+	res = runSVM(mod)
+	updateModelResults(mod, res)
 	newMod = mod
 	oldMod = model(mod.km,[], mod.pr, mod.svmType, mod.y)
-	oldMod.acc = runSVM(oldMod)
+	res = runSVM(oldMod)
+	updateModelResults(oldMod, res)
 	i = 1
 	
 	while newMod.acc > oldMod.acc:
@@ -320,7 +327,7 @@ def runSVM(myModel):
 		
 	#If we're passed an empty model
 	if len(myModel.mySlice) == 0:
-		return 0
+		return (0.0,)*6
 	
 	x = prepareKM(myModel)
 	
@@ -346,9 +353,20 @@ def runSVM(myModel):
 			cross = svm_train(prob,param)
 			t1 = time.time()
 	except ValueError:
-		cross = None
+		cross = (None,)*6
 
 	return cross
+
+def updateModelResults(curMod, res):
+	"""updateModelResults(curMod, res)
+	Update the model statistics with the passed results information	
+	"""
+	curMod.acc = res[0]
+	curMod.spec = res[1]
+	curMod.sens = res[2]
+	curMod.ppv = res[3]
+	curMod.npv = res[4]
+	curMod.fscore = res[5]
 
 #METHODS FOR PARSING INPUT INFORMATION
 
@@ -1137,6 +1155,11 @@ class model(object):
 		self.y = y
 		self.nfold = nfold
 		self.acc = None
+		self.spec = None
+		self.sens = None
+		self.ppv = None
+		self.npv = None
+		self.fscore = None
 		
 		#Quick checks for parameter consistency
 		if not(weights is None) and len(weights) != len(mySlice):
@@ -1167,6 +1190,11 @@ class model(object):
 			outf.write("weights;{}\n".format(','.join(map(lambda i: self.weights[i], self.mySlice))))
 		if not(self.acc is None):
 			outf.write("acc;{}\n".format(self.acc))
+			outf.write("spec;{}\n".format(self.spec))
+			outf.write("sens;{}\n".format(self.sens))
+			outf.write("ppv;{}\n".format(self.ppv))
+			outf.write("npv;{}\n".format(self.npv))
+			outf.write("fscore;{}\n".format(self.fscore))
 		outf.write("nfold;{}\n".format(self.nfold))
 		outf.write("svmType;{}\n".format(self.svmType))
 		outf.write("pr;{}\n".format(self.pr))
@@ -1193,7 +1221,7 @@ class model(object):
 		nfold = None
 		weights = None
 		acc = None
-		
+		sens = spec = ppv = npv = fscore = None
 		for l in lns:
 			l = l.strip().split(";")
 			if l == "":
@@ -1211,16 +1239,29 @@ class model(object):
 					svmType = l[1]
 				elif l[0] == "pr":
 					pr = float(l[1])
+				elif l[0] == "spec":
+					spec = float(l[1])
+				elif l[0] == "sens":
+					sens = float(l[1])
+				elif l[0] == "ppv":
+					ppv = float(l[1])
+				elif l[0] == "npv":
+					npv = float(l[1])
+				elif l[0] == "fscore":
+					fscore = float(l[1])						
 			else:
 				kms.append(kMatrix.pyLoad(l[0]))
 		
 		myM = model(kms, range(len(kms)), pr, svmType, y, nfold, weights)
 		myM.acc = acc
+		myM.sens = sens
+		myM.spec = spec
+		myM.npv = npv
+		myM.ppv = ppv
+		myM.fscore = fscore
 		
 		inf.close()
-		
 		myM.sortMe()
-
 		return myM 
 	
 	loadModel = classmethod(loadModel)
@@ -1280,12 +1321,37 @@ class model(object):
 	
 		Returns: Float value <= 1 designating cross-validation accuracy
 		"""
+		return self.getStat('acc')
+	
+	def getStat(self, stat):	
+		""" modelinstance.getStat(stat)
+		Returns model performance statistic. If statistics have not been calculated
+		will run the SVM to determine the performance.
+		
+		Parameters: stat - a string, may be "acc", "spec", "sens", "ppv", "npv", "fscore"
+		
+		Return Value: The requested statistic
+		"""
 		if len(self.mySlice) == 0:
-			self.acc = 0.0
+			updateModelResults(self, (0.0,)*6)
+			return 0.0
 
 		if self.acc is None:
-			self.acc = runSVM(self)
-		return self.acc
+			myRes = runSvm(self)
+			#HEREHERE
+
+		if stat.lower() == "acc":
+			return self.acc
+		elif stat.lower() == "spec":
+			return self.spec
+		elif stat.lower() == "sens":
+			return self.sens
+		elif stat.lower() == "ppv":
+			return self.ppv
+		elif stat.lower() == "npv":
+			return self.npv
+		elif stat.lower() == "fscore":
+			return self.fscore
 	
 	def asStr(self):
 		""" modelInstance.asStr()
@@ -1322,7 +1388,8 @@ class model(object):
 		Return: string description of model
 		"""
 		myStr =  "Model includes kernel matrix(es) #{}.\n".format(self.asStr())
-		myStr += "{}-type SVM with regularization parameter {}. \nCross-validation accuracy:{}\n".format(self.svmType, self.pr, self.accuracy())
+		myStr += "{}-type SVM with regularization parameter {}.\n".format(self.svmType, self.pr)
+		myStr +="Cross-validation statistics:\nAccuracy: {:1.2}\nSensitivity:{:1.2}\nSpecificity:{:1.2}\nPPV:{:1.2}\nNPV:{:1.2}\nF-Score:{:1.2}\n".format(self.accuracy(), self.sens, self.spec, self.ppv, self.npv, self.fscore)
 		j = 1
 		for i in self.mySlice:
 			if self.weights is None:

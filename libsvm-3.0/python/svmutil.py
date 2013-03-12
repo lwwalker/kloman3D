@@ -45,6 +45,57 @@ def svm_save_model(model_file_name, model):
 	"""
 	libsvm.svm_save_model(model_file_name, model)
 
+def evaluationsMore(ty,pv):
+	"""
+	Added by Lorne Walker 12 March 2012
+	evaluations (ty, pv) -> (ACC, SPEC, SENS, PPV, NPV, FScore)
+	Calculate accuracy, specificity, sensitivity, positive predictive power, 
+	negative predictive power and F-Score using hte true values and predicted 
+	values (ty, pv).  Will only work for support vector classification
+	"""
+	if len(ty) != len(pv):
+		raise ValueError("len(ty) must equal to len(pv)")
+	l = len(ty)
+	total_correct = 0
+	tp = tn = fp = fn = 0
+	for v, y in zip(pv, ty):
+		if y == v:
+			if y > 0:
+				tp += 1
+			else:
+				tn += 1
+		else:
+			if y > 0:
+				fn +=1
+			else:
+				fp += 1
+	try:
+		ACC = float(tp+tn)/l
+	except ZeroDivisionError:
+		ACC = 0.0
+	try:
+		SPEC = float(tn)/(tn+fp)
+	except ZeroDivisionError:
+		SPEC = 0.0		
+	try:
+		SENS = float(tp)/(tp+fn)
+	except ZeroDivisionError:
+		SENS = 0.0		
+	try:
+		PPV = float(tp)/(tp+fp)
+	except ZeroDivisionError:
+		PPV = 0.0		
+	try:
+		NPV = float(tn)/(tn+fn)
+	except ZeroDivisionError:
+		NPV = 0.0		
+	try:
+		FS = 2.0*PPV*SENS/(PPV+SENS)
+	except ZeroDivisionError:
+		FS = 0.0		
+	return(ACC,SPEC,SENS,PPV,NPV,FS)
+				
+	
 def evaluations(ty, pv):
 	"""
 	evaluations(ty, pv) -> (ACC, MSE, SCC)
@@ -146,13 +197,13 @@ def svm_train(arg1, arg2=None, arg3=None):
 		target = (c_double * l)()
 		libsvm.svm_cross_validation(prob, param, nr_fold, target)	
 		ACC, MSE, SCC = evaluations(prob.y[:l], target[:l])
+		res = evaluationsMore(prob.y[:l], target[:l]) #Added by LW 12Mar2013
 		if param.svm_type in [EPSILON_SVR, NU_SVR]:
 			print("Cross Validation Mean squared error = %g" % MSE)
 			print("Cross Validation Squared correlation coefficient = %g" % SCC)
 			return MSE
 		else:
-			#print("Cross Validation Accuracy = %g%%" % ACC)
-			return ACC
+			return res
 	else:
 		m = libsvm.svm_train(prob, param)
 		m = toPyModel(m)
